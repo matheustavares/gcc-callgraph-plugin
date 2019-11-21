@@ -147,17 +147,20 @@ class OutputCallgraph(gcc.IpaPass):
             print("callgraph-plugin error: failed to call 'dot'")
             sys.exit(1)
 
+    def print_final_report(self, output_file, graph, start, end, exclude):
+        for f in start | end | exclude:
+            if f not in graph:
+                print('callgraph-plugin: NOTE: function "%s" not found.' % f)
+        print("callgraph-plugin: written to %s" % output_file)
+
     def execute(self):
         if gcc.is_lto():
             graph = self.get_graph()
-            #self.print_graph_debug(graph, graph)
             finder = PathFinder(graph, EXCLUDE)
             nodes = finder.find(START, END)
             dot_str = self.to_dot(graph, nodes, START, END)
-            #print(dot)
-            filename = self.write_out_file(dot_str, OUT_FILE)
-            #self.print_graph_debug(graph, nodes)
-            print("callgraph-plugin: written to %s" % OUT_FILE)
+            self.write_out_file(dot_str, OUT_FILE)
+            self.print_final_report(OUT_FILE, graph, START, END, EXCLUDE)
 
 cg = OutputCallgraph(name='output-callgraph')
 cg.register_before('whole-program')
