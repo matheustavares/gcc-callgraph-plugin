@@ -56,32 +56,24 @@ class PathFinder():
     def find(self, start, end):
         '''Returns a set of node names that are in some path between any of
            the functions in start to any in of the ones in end'''
-        reachable = set()
-        for s in start:
-            for e in end:
-                forward = self.__dfs("forward", s)
-                backward = self.__dfs("backward", e)
-                both = forward.intersection(backward)
-                reachable = reachable.union(both)
-        return reachable
+        forward = self.__search("forward", start)
+        backward = self.__search("backward", end)
+        return forward.intersection(backward)
 
-    def __dfs(self, direction, start):
-        '''Performs a dfs from @start in the given @direction and
-           returns a set of nodes reachable from it. '''
-        if start not in self.graph: return set()
+    def __search(self, direction, start):
+        '''Performs a dfs from the functions in the @start list in the given
+           @direction and returns a set of nodes reachable from it. '''
+        neighbours = {s for s in start if s in self.graph}
+        visited = set()
 
-        visited = {start}
-        stack = [(start, 0)]
-        while len(stack) > 0:
-            fname, index = stack.pop()
+        while len(neighbours) > 0:
+            fname = neighbours.pop()
+            visited.add(fname)
             node = self.graph[fname]
             flist = node.callees if direction == "forward" else node.callers
-            for i, child in enumerate(flist, start=index):
+            for child in flist:
                 if child not in visited and child in self.graph:
-                    visited.add(child)
-                    stack.append((fname, i+1)) # save where we are
-                    stack.append((child, 0)) # go to child
-                    break
+                    neighbours.add(child)
 
         return visited
 
