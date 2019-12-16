@@ -267,11 +267,14 @@ class OutputCallgraph(gcc.IpaPass):
         if out.returncode != 0:
             Out.abort("failed to call 'dot'. Got:\n %s" % Out.wrap(out.stdout))
 
-    def print_final_report(self, graph, config):
+    def print_final_report(self, graph, config, found_paths):
         for f in config.start | config.end | config.exclude:
             if f not in graph:
                 Out.warn('function "%s" not found.' % f)
-        Out.success("written to %s" % config.out_file)
+        if found_paths:
+            Out.success("written to %s" % config.out_file)
+        else:
+            Out.info("no paths found between the given function sets")
 
     def execute(self):
         if gcc.is_lto():
@@ -279,9 +282,11 @@ class OutputCallgraph(gcc.IpaPass):
             graph = self.get_graph()
             finder = PathFinder(graph, config.exclude)
             nodes = finder.find(config.start, config.end)
-            dot_str = self.to_dot(graph, nodes, config.start, config.end)
-            self.write_out_file(dot_str, config.out_file)
-            self.print_final_report(graph, config)
+            found_paths = len(nodes) != 0
+            if found_paths:
+                dot_str = self.to_dot(graph, nodes, config.start, config.end)
+                self.write_out_file(dot_str, config.out_file)
+            self.print_final_report(graph, config, found_paths)
 
 if sys.version_info.major != 3 or sys.version_info.minor < 5:
     Out.abort("must have python >= 3.5")
