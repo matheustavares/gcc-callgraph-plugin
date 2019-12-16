@@ -21,12 +21,8 @@ import subprocess
 import os
 import sys
 import textwrap
-
-EXCLUDE = {"sha1-file.c:oid_object_info_extended"}
-START = {"builtin/grep.c:cmd_grep", "builtin/grep.c:run"}
-END = {"object.c:parse_object"}
-
-OUT_FILE = 'callgraph.svg'
+import yaml
+from pathlib import Path
 
 PROG_NAME = 'callgraph-plugin'
 
@@ -75,6 +71,92 @@ class Out:
         cls.error(msg if msg != "" else "unknown error")
         sys.exit(err)
 
+class Config:
+
+    CONFIG_FILENAME = ".gcc-callgraph.yml"
+    DEFAULT_OUT_FILE = 'callgraph.svg'
+    START, END, EXCLUDE, OUT_FILE = "start", "end", "exclude", "out_file"
+    KNOWN_KEYS = {START, END, EXCLUDE, OUT_FILE}
+    REQUIRED_KEYS = {START, END}
+
+    def __init__(self, config):
+        self.start = self.__coerse_to_set(config[self.START])
+        self.end = self.__coerse_to_set(config[self.END])
+
+        if self.EXCLUDE in config:
+            self.exclude = self.__coerse_to_set(config[self.EXCLUDE])
+        else:
+            self.exclude = set()
+
+        if self.OUT_FILE in config:
+            self.out_file = config[self.OUT_FILE]
+        else:
+            self.out_file = DEFAULT_OUT_FILE
+
+    @classmethod
+    def __coerse_to_set(cls, setting):
+        t = type(setting)
+        if t == list:
+            return set(setting)
+        elif t == str:
+            return {setting}
+        else:
+            Out.abort("internal error at __coerse_to_set: received a '%s'" % t)
+
+    @classmethod
+    def __validate(cls, config):
+        cls.__check_required(config)
+        cls.__check_unknown(config)
+        cls.__check_types(config)
+
+    @classmethod
+    def __check_types(cls, config):
+        for k, v in config.items():
+            if type(v) == list:
+                if not all(type(e) == str for e in v):
+                    Out.abort(('invalid value for "%s". The list must contain'
+                               ' only strings.') % (k))
+            elif type(v) != str:
+                Out.abort(('invalid value for "%s". Must be a string or string'
+                           ' list') % k)
+
+    @classmethod
+    def __check_required(cls, config):
+        diff = cls.REQUIRED_KEYS - set(config)
+        if len(diff) > 0:
+            Out.abort("config file must specify: %s" % ", ".join(diff))
+
+    @classmethod
+    def __check_unknown(cls, config):
+        diff = set(config) - cls.KNOWN_KEYS
+        if len(diff) > 0:
+            Out.abort("unknown settings: %s" % ", ".join(diff))
+
+    @classmethod
+    def read(cls):
+        home = str(Path.home())
+        local_conf = cls.CONFIG_FILENAME
+        home_conf = os.path.join(home, cls.CONFIG_FILENAME)
+        if os.path.isfile(local_conf):
+            conf_path = local_conf
+        elif os.path.isfile(home_conf):
+            conf_path = home_conf
+        else:
+            Out.abort(('couldn\'t find the config file "%s" neither in current'
+                       ' dir not in home') % cls.CONFIG_FILENAME)
+        try:
+           fd = open(conf_path, "r")
+           config_dict = yaml.safe_load(fd.read())
+           fd.close()
+        except IOError as e:
+            Out.abort('failed to read config file: "%s"' % str(e))
+        except yaml.YAMLError as e:
+            Out.abort('failed to parse config file: "%s"' % str(e))
+        except Exception as e:
+            Out.abort(str(e))
+        cls.__validate(config_dict)
+        return Config(config_dict)
+
 class Node():
 
     def __init__(self, callers, callees):
@@ -83,7 +165,6 @@ class Node():
 
     def copy(self):
         return Node(self.callers.copy(), self.callees.copy())
-
 
 class PathFinder():
 
@@ -156,7 +237,6 @@ class OutputCallgraph(gcc.IpaPass):
         dot += "}\n"
         return dot
 
-
     def clean_lib_functions(self, graph):
         for fname in graph:
             node = graph[fname]
@@ -187,20 +267,21 @@ class OutputCallgraph(gcc.IpaPass):
         if out.returncode != 0:
             Out.abort("failed to call 'dot'. Got:\n %s" % Out.wrap(out.stdout))
 
-    def print_final_report(self, output_file, graph, start, end, exclude):
-        for f in start | end | exclude:
+    def print_final_report(self, graph, config):
+        for f in config.start | config.end | config.exclude:
             if f not in graph:
                 Out.warn('function "%s" not found.' % f)
-        Out.success("written to %s" % output_file)
+        Out.success("written to %s" % config.out_file)
 
     def execute(self):
         if gcc.is_lto():
+            config = Config.read()
             graph = self.get_graph()
-            finder = PathFinder(graph, EXCLUDE)
-            nodes = finder.find(START, END)
-            dot_str = self.to_dot(graph, nodes, START, END)
-            self.write_out_file(dot_str, OUT_FILE)
-            self.print_final_report(OUT_FILE, graph, START, END, EXCLUDE)
+            finder = PathFinder(graph, config.exclude)
+            nodes = finder.find(config.start, config.end)
+            dot_str = self.to_dot(graph, nodes, config.start, config.end)
+            self.write_out_file(dot_str, config.out_file)
+            self.print_final_report(graph, config)
 
 if sys.version_info.major != 3 or sys.version_info.minor < 5:
     Out.abort("must have python >= 3.5")
