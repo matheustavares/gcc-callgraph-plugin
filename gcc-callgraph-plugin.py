@@ -20,6 +20,7 @@ import gcc
 import subprocess
 import os
 import sys
+import textwrap
 
 EXCLUDE = {"sha1-file.c:oid_object_info_extended"}
 START = {"builtin/grep.c:cmd_grep", "builtin/grep.c:run"}
@@ -37,6 +38,12 @@ class Out:
     GREEN = '\033[1;32;49m'
     YELLOW = '\033[1;33;49m'
     END = '\033[m'
+
+    @classmethod
+    def wrap(cls, msg, prefix='  ', wrap_prefix='   ', width=80):
+        wrapper = textwrap.TextWrapper(width=width, initial_indent=prefix,
+                                       subsequent_indent=wrap_prefix)
+        return '\n'.join(map(wrapper.fill, msg.splitlines()))
 
     @classmethod
     def cprint(cls, msg, color):
@@ -173,7 +180,7 @@ class OutputCallgraph(gcc.IpaPass):
                              stderr=subprocess.STDOUT, stdout=subprocess.PIPE,
                              encoding='ascii', input=dot_str)
         if out.returncode != 0:
-            Out.abort("failed to call 'dot'. Got:\n %s" % out.stdout)
+            Out.abort("failed to call 'dot'. Got:\n %s" % Out.wrap(out.stdout))
 
     def print_final_report(self, output_file, graph, start, end, exclude):
         for f in start | end | exclude:
