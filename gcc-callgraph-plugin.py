@@ -46,12 +46,17 @@ class Out:
         return '\n'.join(map(wrapper.fill, msg.splitlines()))
 
     @classmethod
-    def cprint(cls, msg, color):
-        print(color + msg + cls.END)
+    def cprint(cls, msg, color=None, wrap=True):
+        if wrap:
+            msg = cls.wrap(msg, prefix="", wrap_prefix="", width=80)
+        if color == None:
+            print(msg)
+        else:
+            print(color + msg + cls.END)
 
     @classmethod
     def info(cls, msg):
-        print("%s: %s" % (PROG_NAME, msg))
+        cls.cprint("%s: %s" % (PROG_NAME, msg))
 
     @classmethod
     def warn(cls, msg):
