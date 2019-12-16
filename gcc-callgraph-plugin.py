@@ -77,21 +77,12 @@ class Config:
     DEFAULT_OUT_FILE = 'callgraph.svg'
     START, END, EXCLUDE, OUT_FILE = "start", "end", "exclude", "out_file"
     KNOWN_KEYS = {START, END, EXCLUDE, OUT_FILE}
-    REQUIRED_KEYS = {START, END}
 
     def __init__(self, config):
-        self.start = self.__coerse_to_set(config[self.START])
-        self.end = self.__coerse_to_set(config[self.END])
-
-        if self.EXCLUDE in config:
-            self.exclude = self.__coerse_to_set(config[self.EXCLUDE])
-        else:
-            self.exclude = set()
-
-        if self.OUT_FILE in config:
-            self.out_file = config[self.OUT_FILE]
-        else:
-            self.out_file = DEFAULT_OUT_FILE
+        self.start = self.__coerse_to_set(config.get(self.START, []))
+        self.end =  self.__coerse_to_set(config.get(self.END, []))
+        self.exclude =  self.__coerse_to_set(config.get(self.EXCLUDE, []))
+        self.out_file = config.get(self.OUT_FILE, self.DEFAULT_OUT_FILE)
 
     @classmethod
     def __coerse_to_set(cls, setting):
@@ -105,7 +96,6 @@ class Config:
 
     @classmethod
     def __validate(cls, config):
-        cls.__check_required(config)
         cls.__check_unknown(config)
         cls.__check_types(config)
 
@@ -119,12 +109,6 @@ class Config:
             elif type(v) != str:
                 Out.abort(('invalid value for "%s". Must be a string or string'
                            ' list') % k)
-
-    @classmethod
-    def __check_required(cls, config):
-        diff = cls.REQUIRED_KEYS - set(config)
-        if len(diff) > 0:
-            Out.abort("config file must specify: %s" % ", ".join(diff))
 
     @classmethod
     def __check_unknown(cls, config):
@@ -142,8 +126,8 @@ class Config:
         elif os.path.isfile(home_conf):
             conf_path = home_conf
         else:
-            Out.abort(('couldn\'t find the config file "%s" neither in current'
-                       ' dir not in home') % cls.CONFIG_FILENAME)
+            return Config({})
+
         try:
            fd = open(conf_path, "r")
            config_dict = yaml.safe_load(fd.read())
@@ -177,9 +161,17 @@ class PathFinder():
 
     def find(self, start, end):
         '''Returns a set of node names that are in some path between any of
-           the functions in start to any in of the ones in end'''
+           the functions in start to any in of the ones in end. If start or end
+           are empty, don't limit the callgraph in the respective direction.'''
         forward = self.__search("forward", start)
         backward = self.__search("backward", end)
+        len_start, len_end = len(start), len(end)
+        if len_start == 0 and len_end == 0:
+            return set(self.graph)
+        elif len_start == 0:
+            return backward
+        elif len_end == 0:
+            return forward
         return forward.intersection(backward)
 
     def __search(self, direction, start):
