@@ -27,12 +27,41 @@ END = {"object.c:parse_object"}
 
 OUT_FILE = 'callgraph.svg'
 
+PROG_NAME = 'callgraph-plugin'
+
 # HACK: print on stderr by default to avoid messing with the pipe to ld.
 sys.stdout = sys.stderr
 
-if sys.version_info.major != 3 or sys.version_info.minor < 5:
-    print("callgraph-plugin error: must have python >= 3.5")
-    sys.exit(1)
+class Out:
+    RED = '\033[1;31;49m'
+    GREEN = '\033[1;32;49m'
+    YELLOW = '\033[1;33;49m'
+    END = '\033[m'
+
+    @classmethod
+    def cprint(cls, msg, color):
+        print(color + msg + cls.END)
+
+    @classmethod
+    def info(cls, msg):
+        print("%s: %s" % (PROG_NAME, msg))
+
+    @classmethod
+    def warn(cls, msg):
+        cls.cprint("%s warn: %s" % (PROG_NAME, msg), cls.YELLOW)
+
+    @classmethod
+    def error(cls, msg):
+        cls.cprint("%s error: %s" % (PROG_NAME, msg), cls.RED)
+
+    @classmethod
+    def success(cls, msg):
+        cls.cprint("%s: %s" % (PROG_NAME, msg), cls.GREEN)
+
+    @classmethod
+    def abort(cls, msg="", err=1):
+        cls.error(msg if msg != "" else "unknown error")
+        sys.exit(err)
 
 class Node():
 
@@ -84,6 +113,7 @@ class OutputCallgraph(gcc.IpaPass):
 
     def print_graph_debug(self, graph, nodes):
         '''Print @nodes from @graph.'''
+        Out.info("info on the callgraph:\n")
         for fname in nodes:
             if fname not in graph: continue
             print(fname)
@@ -138,20 +168,18 @@ class OutputCallgraph(gcc.IpaPass):
     def write_out_file(self, dot_str, filename):
         fmt = os.path.splitext(filename)[1][1:]
         if len(fmt) == 0:
-            print("callgraph-plugin error: invalid filename: '%s'" % filename)
-            sys.exit(1)
+            Out.abort("invalid filename: '%s'" % filename)
         out = subprocess.run(["dot", "-T%s" % fmt, "-o", filename],
                              stderr=subprocess.STDOUT, stdout=subprocess.PIPE,
                              encoding='ascii', input=dot_str)
         if out.returncode != 0:
-            print("callgraph-plugin error: failed to call 'dot'")
-            sys.exit(1)
+            Out.abort("failed to call 'dot'. Got:\n %s" % out.stdout)
 
     def print_final_report(self, output_file, graph, start, end, exclude):
         for f in start | end | exclude:
             if f not in graph:
-                print('callgraph-plugin: NOTE: function "%s" not found.' % f)
-        print("callgraph-plugin: written to %s" % output_file)
+                Out.warn('function "%s" not found.' % f)
+        Out.success("written to %s" % output_file)
 
     def execute(self):
         if gcc.is_lto():
@@ -161,6 +189,9 @@ class OutputCallgraph(gcc.IpaPass):
             dot_str = self.to_dot(graph, nodes, START, END)
             self.write_out_file(dot_str, OUT_FILE)
             self.print_final_report(OUT_FILE, graph, START, END, EXCLUDE)
+
+if sys.version_info.major != 3 or sys.version_info.minor < 5:
+    Out.abort("must have python >= 3.5")
 
 cg = OutputCallgraph(name='output-callgraph')
 cg.register_before('whole-program')
