@@ -49,23 +49,27 @@ The plugin will read user specified settings from a `.gcc-callgraph.yml` file,
 in the working directory or in the user's home directory (in this order). This
 file must be in YAML format and can contain the following attributes:
 
-- `start`: set of functions to start the callgraph at. Any call chain that
-	   doesn't start in one of these is excluded.
-- `end`: set of functions to end the callgraph at. Any call chain that does not
-	 end in one of these is excluded.
-- `exclude`: set of functions to be excluded from the callgraph.
-- `out_file`: output file name. Extension must be one of the formats accepted by
-	      `dot`, e.g. `.png` or `.svg`.
+- `start` (str or str list): set of functions to start the callgraph at. Any
+  call chain that  doesn't start in one of these is excluded.
+- `end` (str or str list): set of functions to end the callgraph at. Any call
+  chain that does not end in one of these is excluded.
+- `exclude` (str or str list): set of functions to be excluded from the
+  callgraph.
+- `out_file` (str): output file name. Extension must be one of the formats
+  accepted by `dot`, e.g. `.png` or `.svg`.
 
-The first three can be strings or string lists and the forth must be a string.
-The starting nodes will be colored blue and the end ones green.
+**Functions must be specified in the format** `path:function_name`, where
+`path` points to the file in which the function was declared, relative to the
+working directory of compilation. When specified, the starting nodes will be
+colored blue and the end ones green.
 
 As an example, with the following we get all paths from a function A to a
-function B that don't contain a function C:
+function B that don't contain a function C (all declared in the same file,
+main.c):
 
 ```
-start: A
-end: B
-exclude: C
+start: main.c:A
+end: main.c:B
+exclude: main.c:C
 ```
 
