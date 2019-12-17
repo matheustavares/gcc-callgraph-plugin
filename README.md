@@ -7,6 +7,8 @@ architecture.
 ## Features
 
 - Display the whole callgraph, considering all compilling files.
+- Performs in O(V + E), where V is the number of functions and E is the number
+  of calls.
 - Possibility to restrict callgraph with sets of starting and ending functions.
 - Possibility to exclude certain functions.
 - Accept any output format known by `dot`.
