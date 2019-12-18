@@ -75,14 +75,16 @@ class Config:
 
     CONFIG_FILENAME = ".gcc-callgraph.yml"
     DEFAULT_OUT_FILE = 'callgraph.svg'
-    START, END, EXCLUDE, OUT_FILE = "start", "end", "exclude", "out_file"
-    KNOWN_KEYS = {START, END, EXCLUDE, OUT_FILE}
+    START, END, EXCLUDE = "start", "end", "exclude"
+    OUT_FILE, MULTIPLE_EDGES = "out_file", "multiple_edges"
+    KNOWN_KEYS = {START, END, EXCLUDE, OUT_FILE, MULTIPLE_EDGES}
 
     def __init__(self, config):
         self.start = self.__coerse_to_set(config.get(self.START, []))
         self.end =  self.__coerse_to_set(config.get(self.END, []))
         self.exclude =  self.__coerse_to_set(config.get(self.EXCLUDE, []))
         self.out_file = config.get(self.OUT_FILE, self.DEFAULT_OUT_FILE)
+        self.multiple_edges = config.get(self.MULTIPLE_EDGES, False)
 
     @classmethod
     def __coerse_to_set(cls, setting):
@@ -102,7 +104,11 @@ class Config:
     @classmethod
     def __check_types(cls, config):
         for k, v in config.items():
-            if type(v) == list:
+            if k == cls.MULTIPLE_EDGES:
+                if type(v) != bool:
+                    Out.abort('invalid value for "%s". Must be a boolean.' %
+                               cls.MULTIPLE_EDGES)
+            elif type(v) == list:
                 if not all(type(e) == str for e in v):
                     Out.abort(('invalid value for "%s". The list must contain'
                                ' only strings.') % (k))
@@ -235,16 +241,18 @@ class OutputCallgraph(gcc.IpaPass):
             node.callers = [c for c in node.callers if c in graph]
             node.callees = [c for c in node.callees if c in graph]
 
-    def get_graph(self):
+    def get_graph(self, medges):
         graph = {}
         for cgn in gcc.get_callgraph_nodes():
             fname = self.gcc_node_to_str(cgn)
-            callees = []
-            callers = []
+            callees = [] if medges else set()
+            callers = [] if medges else set()
             for edge in cgn.callees:
-                callees.append(self.gcc_node_to_str(edge.callee))
+                add = callees.append if medges else callees.add
+                add(self.gcc_node_to_str(edge.callee))
             for edge in cgn.callers:
-                callers.append(self.gcc_node_to_str(edge.caller))
+                add = callers.append if medges else callers.add
+                add(self.gcc_node_to_str(edge.caller))
             graph[fname] = Node(callers, callees)
         self.clean_lib_functions(graph)
         return graph
@@ -275,7 +283,7 @@ class OutputCallgraph(gcc.IpaPass):
     def execute(self):
         if gcc.is_lto():
             config = Config.read()
-            graph = self.get_graph()
+            graph = self.get_graph(config.multiple_edges)
             finder = PathFinder(graph, config.exclude)
             nodes = finder.find(config.start, config.end)
             found_paths = len(nodes) != 0

@@ -81,8 +81,10 @@ file must be in YAML format and can contain the following attributes:
   chain that does not end in one of these is excluded.
 - `exclude` (str or str list): set of functions to be excluded from the
   callgraph.
+- `multiple_edges` (boolean): whether to display each call between functions A
+  and B as individual edges or as a single edge (default is False). 
 - `out_file` (str): output file name. Extension must be one of the formats
-  accepted by `dot`, e.g. `.png` or `.svg`.
+  accepted by `dot`, e.g. `.png` or `.svg` (default is `callgraph.svg`).
 
 **Functions must be specified in the format** `path:function_name`, where
 `path` points to the file in which the function was declared, relative to the
