@@ -250,14 +250,18 @@ class OutputCallgraph(gcc.IpaPass):
         return graph
 
     def write_out_file(self, dot_str, filename):
+        # Note: we write to dot's stdin in ascii and read from its stdout in
+        # utf-8. This is done to ensure it will be able to read our input whilst
+        # being permissive in its output.
         fmt = os.path.splitext(filename)[1][1:]
         if len(fmt) == 0:
             Out.abort("invalid filename: '%s'" % filename)
         out = subprocess.run(["dot", "-T%s" % fmt, "-o", filename],
                              stderr=subprocess.STDOUT, stdout=subprocess.PIPE,
-                             encoding='ascii', input=dot_str)
+                             input=bytes(dot_str, encoding='ascii'))
         if out.returncode != 0:
-            Out.abort("failed to call 'dot'. Got:\n %s" % Out.wrap(out.stdout))
+            stdout_str = Out.wrap(out.stdout.decode('utf-8'))
+            Out.abort("failed to call 'dot'. Got:\n %s" % stdout_str)
 
     def print_final_report(self, graph, config, found_paths):
         for f in config.start | config.end | config.exclude:
