@@ -43,6 +43,32 @@ Note:
 - If you are compilling a code with a Makefile, you can use `make CC="gcc
   -fplugin ..."`
 
+### With docker
+
+You may also skip installing dependencies and run the plugin in a docker
+container.
+
+To build the image:
+
+```
+    $ docker build -t callgraph .
+```
+
+Then, in the directory of the project you want to generate the call graph for,
+run:
+
+```
+    $ docker run -v "$PWD:/src" -it callgraph
+```
+
+This will run the container interactively, giving you a bash session in the
+directory it was invoked. Then you can compile your project with the same
+command shown in the previous section. Just remember to use:
+
+```
+-fplugin-arg-python-script=/plugin/gcc-callgraph-plugin.py
+```
+
 ## Configuring output
 
 The plugin will read user specified settings from a `.gcc-callgraph.yml` file,
