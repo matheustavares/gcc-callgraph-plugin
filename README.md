@@ -111,3 +111,8 @@ The `examples` directory contain a couple of toy C projects to compile with this
 plugin. Every subdirectory has a `M̀akefile` designed to generate the call graph
 inside the `callgraph` docker container.
 
+## Extra
+
+If you want to find paths in the call graph for a particular execution, you
+might want to try [callpath](https://github.com/matheustavares/callpath).
+
