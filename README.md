@@ -4,6 +4,10 @@ A python script to print call graphs during compilation with GCC. It uses the
 [gcc-python-plugin](https://github.com/davidmalcolm/gcc-python-plugin)
 architecture.
 
+Example output for [`examples/random-sort`](examples/random-sort):
+
+![example output](./examples/random-sort/callgraph.svg)
+
 ## Features
 
 - Display the whole callgraph, considering all compilling files.
@@ -100,4 +104,10 @@ start: main.c:A
 end: main.c:B
 exclude: main.c:C
 ```
+
+## Examples
+
+The `examples` directory contain a couple of toy C projects to compile with this
+plugin. Every subdirectory has a `M̀akefile` designed to generate the call graph
+inside the `callgraph` docker container.
 
