@@ -75,9 +75,10 @@ command shown in the previous section. Just remember to use:
 
 ## Configuring output
 
-The plugin will read user specified settings from a `.gcc-callgraph.yml` file,
-in the working directory or in the user's home directory (in this order). This
-file must be in YAML format and can contain the following attributes:
+The plugin will read user specified settings from a `.gcc-callgraph.yml` file
+(if it exists), in the working directory or in the user's home directory (in
+this order). This file must be in YAML format and can contain the following
+attributes (none of them are required):
 
 - `start` (str or str list): set of functions to start the callgraph at. Any
   call chain that  doesn't start in one of these is excluded.
@@ -86,12 +87,13 @@ file must be in YAML format and can contain the following attributes:
 - `exclude` (str or str list): set of functions to be excluded from the
   callgraph.
 - `multiple_edges` (boolean): whether to display each call between functions A
-  and B as individual edges or as a single edge (default is False).
+  and B as individual edges (True) or as a single edge (False). Default is
+  False.
 - `abort_on_func_not_found` (boolean): whether to abort imediatelly if any
   function specified in the config file is not found (True), or continue with a
-  warning (False). (default is False)
+  warning (False). Default is False.
 - `out_file` (str): output file name. Extension must be one of the formats
-  accepted by `dot`, e.g. `.png` or `.svg` (default is `callgraph.svg`).
+  accepted by `dot`, e.g. `.png` or `.svg`. Default is `callgraph.svg`.
 
 **Functions must be specified in the format** `path:function_name`, where
 `path` points to the file in which the function was declared, relative to the
