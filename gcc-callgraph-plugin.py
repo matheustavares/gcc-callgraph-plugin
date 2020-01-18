@@ -23,6 +23,7 @@ import sys
 import textwrap
 import yaml
 from pathlib import Path
+import difflib
 
 PROG_NAME = 'callgraph-plugin'
 
@@ -272,18 +273,26 @@ class OutputCallgraph(gcc.IpaPass):
             Out.abort("failed to call 'dot'. Got:\n %s" % stdout_str)
 
     def print_final_report(self, graph, config, found_paths):
-        for f in config.start | config.end | config.exclude:
-            if f not in graph:
-                Out.warn('function "%s" not found.' % f)
         if found_paths:
             Out.success("written to %s" % config.out_file)
         else:
             Out.info("no paths found between the given function sets")
 
+    def check_functions_in_config(self, config, graph):
+        for f in config.start | config.end | config.exclude:
+            if f not in graph:
+                closest = difflib.get_close_matches(f, graph, n=2)
+                warn_msg = 'function "%s" not found.' % f
+                if len(closest) > 0:
+                    closest_str = ', '.join(['"%s"' % s for s in closest])
+                    warn_msg += ' Most similar: %s.' % closest_str
+                Out.warn(warn_msg)
+
     def execute(self):
         if gcc.is_lto():
             config = Config.read()
             graph = self.get_graph(config.multiple_edges)
+            self.check_functions_in_config(config, graph)
             finder = PathFinder(graph, config.exclude)
             nodes = finder.find(config.start, config.end)
             found_paths = len(nodes) != 0
