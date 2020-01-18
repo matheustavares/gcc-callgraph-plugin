@@ -86,7 +86,10 @@ file must be in YAML format and can contain the following attributes:
 - `exclude` (str or str list): set of functions to be excluded from the
   callgraph.
 - `multiple_edges` (boolean): whether to display each call between functions A
-  and B as individual edges or as a single edge (default is False). 
+  and B as individual edges or as a single edge (default is False).
+- `abort_on_func_not_found` (boolean): whether to abort imediatelly if any
+  function specified in the config file is not found (True), or continue with a
+  warning (False). (default is False)
 - `out_file` (str): output file name. Extension must be one of the formats
   accepted by `dot`, e.g. `.png` or `.svg` (default is `callgraph.svg`).
 

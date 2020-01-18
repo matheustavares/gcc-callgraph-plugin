@@ -78,7 +78,9 @@ class Config:
     DEFAULT_OUT_FILE = 'callgraph.svg'
     START, END, EXCLUDE = "start", "end", "exclude"
     OUT_FILE, MULTIPLE_EDGES = "out_file", "multiple_edges"
-    KNOWN_KEYS = {START, END, EXCLUDE, OUT_FILE, MULTIPLE_EDGES}
+    ABORT_ON_FUNC_NOT_FOUND = "abort_on_func_not_found"
+    KNOWN_KEYS = {START, END, EXCLUDE, OUT_FILE, MULTIPLE_EDGES,
+                  ABORT_ON_FUNC_NOT_FOUND}
 
     def __init__(self, config):
         self.start = self.__coerse_to_set(config.get(self.START, []))
@@ -86,6 +88,8 @@ class Config:
         self.exclude =  self.__coerse_to_set(config.get(self.EXCLUDE, []))
         self.out_file = config.get(self.OUT_FILE, self.DEFAULT_OUT_FILE)
         self.multiple_edges = config.get(self.MULTIPLE_EDGES, False)
+        self.abort_on_func_not_found = config.get(self.ABORT_ON_FUNC_NOT_FOUND,
+                                                  False)
 
     @classmethod
     def __coerse_to_set(cls, setting):
@@ -105,10 +109,9 @@ class Config:
     @classmethod
     def __check_types(cls, config):
         for k, v in config.items():
-            if k == cls.MULTIPLE_EDGES:
+            if k == cls.MULTIPLE_EDGES or k == cls.ABORT_ON_FUNC_NOT_FOUND:
                 if type(v) != bool:
-                    Out.abort('invalid value for "%s". Must be a boolean.' %
-                               cls.MULTIPLE_EDGES)
+                    Out.abort('invalid value for "%s". Must be a boolean.' % k)
             elif type(v) == list:
                 if not all(type(e) == str for e in v):
                     Out.abort(('invalid value for "%s". The list must contain'
@@ -287,6 +290,8 @@ class OutputCallgraph(gcc.IpaPass):
                     closest_str = ', '.join(['"%s"' % s for s in closest])
                     warn_msg += ' Most similar: %s.' % closest_str
                 Out.warn(warn_msg)
+                if config.abort_on_func_not_found:
+                    Out.abort('aborting because "abort_on_func_not_found"=True')
 
     def execute(self):
         if gcc.is_lto():
